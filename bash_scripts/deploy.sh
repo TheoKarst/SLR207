@@ -17,18 +17,23 @@ then
 	exit
 fi
 
-# Generate a random secret key to have a secured connection between all the computers:
+# Generate a random secret key (symmetric key for AES) to have a secured connection between all the computers:
 openssl rand 32 > $keysfile
 
 computers=$(cat $1)
 
 for computer in $computers; do
 	host="$login@$computer.$domain"
-	command1=("ssh" "$host" "rm -rf $remoteFolder; mkdir $remoteFolder")
+
+    # Kill the previous versions of the slave servers, and create a new empty folder for our files:
+	command1=("ssh" "$host" "lsof -ti | xargs kill -9; rm -rf $remoteFolder; mkdir $remoteFolder")
+
+    # Send the jar file to the remote host, and the keys file to allow him to decipher our messages:
 	command2=("scp" "$fullpath" "$host:$remoteFolder$filename")
     command3=("scp" "$keysfile" "$host:$remoteFolder$keysfile")
+
+    # Start the server on the remote host:
     command4=("ssh" "$host" "java -jar $remoteFolder$filename")
-    
 	
 	echo ${command1[*]}
 	${command1[@]}
