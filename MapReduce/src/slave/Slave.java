@@ -5,8 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.regex.Matcher;
@@ -30,6 +28,7 @@ public class Slave {
 	}
 	
 	public static void createMapFromSplit(String fullpathSplit) {
+		Utils.printToLogFile("createMapFromSplit(" + fullpathSplit + ")");
 		
 		// Create a directory to save the output file:
 		File directory = new File(Utils.MAPS_FOLDER);
@@ -37,7 +36,7 @@ public class Slave {
 		    directory.mkdirs();
 		
 		// Create a map file with a name depending on the name of the split file:
-		String mapFilename = Utils.MAPS_FOLDER + Utils.splitNameToMapName(Utils.getFilename(fullpathSplit));
+		String mapFilename = Utils.splitNameToMapName(fullpathSplit);
 		
 		try(BufferedReader reader = new BufferedReader(new FileReader(fullpathSplit));
 			BufferedWriter writer = new BufferedWriter(new FileWriter(mapFilename))){
@@ -51,17 +50,19 @@ public class Slave {
 			}
 			
 		} catch (IOException e) {
-			e.printStackTrace();
+			Utils.printToLogFile(e);
 		}
 	}
 	
 	public static void createShufflesFromMap(String fullpathMap) {
+		Utils.printToLogFile("createShufflesFromMap(" + fullpathMap + ")");
+		
 		String hostname = Utils.getHostName();
 		Pattern pattern = Pattern.compile("UM([0-9]+)\\.txt");
-		Matcher matcher = pattern.matcher(Utils.getFilename(fullpathMap));
+		Matcher matcher = pattern.matcher(Utils.getBasename(fullpathMap));
 		
 		if(!matcher.matches()) {
-			System.err.println("Unexpected filename: should be like UM[number].txt");
+			Utils.printToLogFile("Unexpected filename: should be like UM[number].txt");
 			System.exit(1);
 		}
 		
@@ -77,12 +78,14 @@ public class Slave {
 				createShuffleFile(line, hostname);
 			
 		} catch (IOException e) {
-			e.printStackTrace();
+			Utils.printToLogFile(e);
 		}
 	}
 	
 	public static void sendShuffles(ArrayList<String> computers) {
-		ArrayList<String> shuffles = Utils.listFiles(Utils.SHUFFLES_FOLDER);
+		Utils.printToLogFile("sendShuffles(computers)");
+		
+		ArrayList<String> shuffles = Utils.listFiles(Utils.SHUFFLES_FOLDER, false);
 		
 		// Pattern of all files in the SHUFFLES_FOLDER:
 		Pattern pattern = Pattern.compile("([0-9]+)-(.+)\\.txt");
@@ -98,7 +101,7 @@ public class Slave {
 					Matcher matcher = pattern.matcher(shuffleFile);
 					
 					if(!matcher.matches()) {
-						System.err.println("Unexpected filename in the shuffles folder: " + shuffleFile);
+						Utils.printToLogFile("Unexpected filename in the shuffles folder: " + shuffleFile);
 						return;
 					}
 					
@@ -110,10 +113,16 @@ public class Slave {
 					Client client = new Client(host, Utils.PORT);
 					
 					// Create a folder on the remote computer to store the shuffled files:
+					Utils.printToLogFile("mkdir -p " + Utils.SHUFFLES_RECV_FOLDER);
 					client.sendCommand("mkdir", "-p", Utils.SHUFFLES_RECV_FOLDER);
 					
 					// Send the file to the remote computer:
-					client.sendFile(Utils.SHUFFLES_FOLDER + shuffleFile, Utils.SHUFFLES_RECV_FOLDER);
+					Utils.printToLogFile("Send " + Utils.SHUFFLES_FOLDER + shuffleFile + " to host " + host + 
+							" at " + Utils.SHUFFLES_RECV_FOLDER + shuffleFile);
+					client.sendFile(Utils.SHUFFLES_FOLDER + shuffleFile, Utils.SHUFFLES_RECV_FOLDER + shuffleFile);
+					
+					// End of communication:
+					client.sendEOF();
 
 					// Wait for the client to complete:
 					client.waitFor();
@@ -129,11 +138,13 @@ public class Slave {
 				thread.join();
 		}
 		catch(InterruptedException e) {
-			e.printStackTrace();
+			Utils.printToLogFile(e);
 		}
 	}
 	
 	public static void createShuffleFile(String line, String hostname) {
+		Utils.printToLogFile("createShuffleFile(" + line + ", " + hostname + ")");
+		
 		String key = line.split(" ")[0];
 		String shuffleFilename = Utils.SHUFFLES_FOLDER + key.hashCode() + "-" + hostname + ".txt";
 		
@@ -141,13 +152,15 @@ public class Slave {
 			writer.write(line + "\n");
 		}
 		catch (IOException e) {
-			e.printStackTrace();
+			Utils.printToLogFile(e);
 		}
 	}
 	
-	public static void reduceFromShufflereceived() {
+	public static void reduceFromShuffleReceived() {
+		Utils.printToLogFile("reduceFromShufflereceived()");
+		
 		// Get the files in schufflesreceived folder, and sort them by name (this way, file with the same hash are side by side:
-		ArrayList<String> filenames = Utils.listFiles(Utils.SHUFFLES_RECV_FOLDER);
+		ArrayList<String> filenames = Utils.listFiles(Utils.SHUFFLES_RECV_FOLDER, false);
 		Collections.sort(filenames);
 		
 		// Create a directory to save the output files:
@@ -175,14 +188,12 @@ public class Slave {
 				Matcher matcher = pattern.matcher(filename);
 				
 				if(!matcher.matches()) {
-					System.err.println("Unexpected filename in folder shufflesreceived: " + filename);
+					Utils.printToLogFile("Unexpected filename in folder shufflesreceived: " + filename);
 					fileIndex++;
 					continue;
 				}
 				
 				currentHash = matcher.group(1);
-				
-				System.out.println("Processing file: " + filename + ". Current hash: " + currentHash + ", previous hash: " + previousHash);
 				
 				sameHash = previousHash == null || currentHash.equals(previousHash);
 				if(sameHash) {
@@ -197,10 +208,9 @@ public class Slave {
 							occurences += Integer.parseInt(line.split(" ")[1]);
 							
 					} catch (IOException e) {
-						e.printStackTrace();
+						Utils.printToLogFile(e);
 					}
 					
-					System.out.println("SAME HASH: " + currentHash + ": " + occurences);
 					fileIndex++;
 				}
 			}
@@ -211,7 +221,7 @@ public class Slave {
 			try(FileWriter writer = new FileWriter(Utils.REDUCES_FOLDER + reduceFile)){
 				writer.write(currentKey + " " + occurences + "\n");
 			} catch (IOException e) {
-				e.printStackTrace();
+				Utils.printToLogFile(e);
 			}
 		}
 	}

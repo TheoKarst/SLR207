@@ -32,7 +32,7 @@ public class Utils {
 	
 	
 	public static String getFullName(String computer) {
-		return LOGIN + "@" + computer + "." + DOMAIN;
+		return computer + "." + DOMAIN;
 	}
 	
 	public static String getHostName() {
@@ -45,14 +45,14 @@ public class Utils {
 		return null;
 	}
 	
-	public static ArrayList<String> listFiles(String directory){
+	public static ArrayList<String> listFiles(String folder, boolean fullname){
 		ArrayList<String> filenames = new ArrayList<String>();
 
-		File[] files = new File(directory).listFiles();
+		File[] files = new File(folder).listFiles();
 
 		for (File file : files)
 		    if (file.isFile())
-		        filenames.add(file.getName());
+		        filenames.add(fullname ? folder + file.getName() : file.getName());
 		
 		return filenames;
 	}
@@ -93,23 +93,25 @@ public class Utils {
 	}
 	
 	// From a split filename, return  the corresponding map filename (ex: S0.txt -> UM0.txt):
-	public static String splitNameToMapName(String splitName) {
+	public static String splitNameToMapName(String fullpath) {
+		String filename = getBasename(fullpath);
 		Pattern pattern = Pattern.compile("S([0-9]+)\\.txt");
-		Matcher matcher = pattern.matcher(splitName);
+		Matcher matcher = pattern.matcher(filename);
 		
 		if(!matcher.matches()) {
 			System.err.println("Unexpected filename: should be like S[number].txt");
 			System.exit(1);
 		}
 		
-		return "UM" + matcher.group(1) + ".txt";
+		return MAPS_FOLDER + "UM" + matcher.group(1) + ".txt";
 	}
 	
-	public static String getFilename(String fullpath) {
+	// Return the name of the file, without the full path:
+	public static String getBasename(String fullpath) {
 		return fullpath.substring(fullpath.lastIndexOf(File.separator) + 1);
 	}
 	
-	public static void printToLogfile(String data) {
+	public static void printToLogFile(String data) {
 		try {
 			FileWriter writer = new FileWriter(LOG_FILE, true);
 			writer.write(data);

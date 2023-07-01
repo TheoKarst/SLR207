@@ -133,9 +133,9 @@ public class ClientManager extends CommunicationManager {
 					Slave.createShufflesFromMap(relatedFile);
 					Slave.sendShuffles(Utils.loadLines(Utils.COMPUTERS_FILE));
 				}
-				else if(mode == 2) {
-					Slave.reduceFromShufflereceived();
-				}					
+			}
+			else if(mode == 2) {
+				Slave.reduceFromShuffleReceived();
 			}
 		}
 		catch(IOException e) {
