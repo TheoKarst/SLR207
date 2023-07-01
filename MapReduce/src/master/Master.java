@@ -12,31 +12,6 @@ public class Master {
 
 	public static void main(String[] args) {
 		
-//		ProcessBuilder pb = new ProcessBuilder("/tmp/test_script.sh");
-//		
-//		try {
-//			Process process = pb.start();
-//			
-//			StreamReader outStreamReader = new StreamReader(process.getInputStream(), 5100);
-//			StreamReader errStreamReader = new StreamReader(process.getErrorStream(), 5100);
-//			
-//			outStreamReader.start();
-//			errStreamReader.start();
-//			
-//			String output = outStreamReader.poll();
-//			System.out.println("Output:\n" + output);
-//			
-//			System.out.println();
-//			
-//			String error = errStreamReader.poll();
-//			System.out.println("Error:\n" + error);
-//		
-//			process.destroy();
-//			
-//		} catch (IOException | InterruptedException e) {
-//			e.printStackTrace();
-//		}
-		
 		if(args.length != 1) {
 			System.err.println("usage: java Master [list_computer]");
 			System.exit(1);

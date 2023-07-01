@@ -7,6 +7,9 @@ import java.io.StringWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
+import slave.Slave;
+import util.Utils;
+
 /*
  * The client manager is used to manage a connection with a client, from the server. Servers are run on remote hosts, and execute commands
  * that are sent by clients. The server can also send back messages to the client.
@@ -29,6 +32,10 @@ public class ClientManager extends CommunicationManager {
 					
 					case SEND_BASH_COMMAND:
 						receiveCommand();
+						break;
+						
+					case SEND_MAP_REDUCE_COMMAND:
+						receiveMapReduceCommand();
 						break;
 						
 					case EOF_MESSAGE:
@@ -72,7 +79,7 @@ public class ClientManager extends CommunicationManager {
 	        fileOutputStream.close();
 		}
 		catch(IOException e) {
-			e.printStackTrace();
+			printStackTrace(e);
 		}
 	}
 	
@@ -101,11 +108,38 @@ public class ClientManager extends CommunicationManager {
 			Process process = pb.start();
 			process.waitFor();
 		}
-		catch(IOException e) {
-			e.printStackTrace();
+		catch(IOException | InterruptedException e) {
+			printStackTrace(e);
 		}
-		catch (InterruptedException e) {
-			e.printStackTrace();
+	}
+	
+	// Message format:
+	// mode:				int
+	// file_size:			int (if any)
+	// file:				byte[] (if any)
+	public void receiveMapReduceCommand() {
+		try {
+			int mode = inputStream.readInt();
+			
+			if(mode == 0 || mode == 1) {
+				byte[] buffer = new byte[inputStream.readInt()];
+				inputStream.read(buffer);
+				String relatedFile = new String(buffer, StandardCharsets.UTF_8);
+				
+				if(mode == 0) {
+					Slave.createMapFromSplit(relatedFile);
+				}
+				else if(mode == 1) {
+					Slave.createShufflesFromMap(relatedFile);
+					Slave.sendShuffles(Utils.loadLines(Utils.COMPUTERS_FILE));
+				}
+				else if(mode == 2) {
+					Slave.reduceFromShufflereceived();
+				}					
+			}
+		}
+		catch(IOException e) {
+			printStackTrace(e);
 		}
 	}
 	
@@ -125,7 +159,7 @@ public class ClientManager extends CommunicationManager {
 			outputStream.write(message.getBytes());
 		}
 		catch (IOException e) {
-			e.printStackTrace();
+			printStackTrace(e);
 		}
 	}
 	
@@ -145,7 +179,7 @@ public class ClientManager extends CommunicationManager {
 			outputStream.write(message.getBytes());
 		}
 		catch (IOException e) {
-			e.printStackTrace();
+			printStackTrace(e);
 		}
 	}
 	

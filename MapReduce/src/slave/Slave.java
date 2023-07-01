@@ -12,24 +12,20 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.CommunicationManager;
+import net.Server;
 import util.Utils;
 
 public class Slave {
 
 	public static void main(String[] args) {
+		// Load the keys to setup the communication manager (this will allow us to cipher all the communications with a
+		// random symmetric key, shared with ssh to all trusted computers). All the exchanges between trusted computers will
+		// be using these keys and AES to have secured communications:
+		CommunicationManager.loadCipherKeys(Utils.REMOTE_WD + Utils.KEYS_FILE);
 		
-		int mode = Integer.parseInt(args[0]);		
-		
-		if(mode == 0) {
-			createMapFromSplit(args[1]);
-		}
-		else if(mode == 1) {
-			createShufflesFromMap(args[1]);
-			sendShuffles(Utils.loadLines(Utils.COMPUTERS_FILE));
-		}
-		else if(mode == 2) {
-			reduceFromShufflereceived();
-		}
+		// Start the server on the given port, and execute commands that are received:
+		new Server(52301);
 	}
 	
 	public static void createMapFromSplit(String fullpathSplit) {

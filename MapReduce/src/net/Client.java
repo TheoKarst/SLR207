@@ -74,6 +74,30 @@ public class Client extends CommunicationManager {
 			e.printStackTrace();
 		}
 	}
+
+	// Message format:
+	// commandId:			int
+	// mode:				int
+	// file_size:			int (if any)
+	// file:				byte[] (if any)
+	public void sendMapReduceCommand(int mode, String relatedFile) {
+		try {
+			// Send command id:
+			outputStream.writeInt(SEND_MAP_REDUCE_COMMAND);
+			
+			// Send mode:
+			outputStream.writeInt(mode);
+			
+			// Send related file, if any:
+			if(relatedFile != null) {
+				outputStream.writeInt(relatedFile.length());
+				outputStream.write(relatedFile.getBytes());
+			}
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 	public void sendEOF() {
 		try {

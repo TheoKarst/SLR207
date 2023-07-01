@@ -31,8 +31,10 @@ public class CommunicationManager {
 	public final static int SEND_ERR_MESSAGE = 2;
 	public final static int SEND_OUT_MESSAGE = 3;	
 	
-	public final static int SEND_FILE_COMMAND = 10;
-	public final static int SEND_BASH_COMMAND = 11;
+	public final static int SEND_FILE_COMMAND = 10;		// Send a file to the server
+	public final static int SEND_BASH_COMMAND = 11;		// Send a bash command to the server
+	
+	public final static int SEND_MAP_REDUCE_COMMAND = 12;	// Send a command related to MapReduce algorithm (split, map, reduce, etc...)
 	
 	private Socket socket;
 	protected DataInputStream inputStream;
