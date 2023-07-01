@@ -17,11 +17,11 @@ public class Utils {
 	public final static String LOGIN = "karst-21";
 	public final static String DOMAIN = "enst.fr";
 	
-	public final static String LOCAL_WD = System.getProperty("user.dir") + "/";
+	// public final static String LOCAL_WD = System.getProperty("user.dir") + "/";
 	public final static String REMOTE_WD = "/tmp/" + LOGIN + "/";
 	
 	private final static String LOG_FILE = "log.txt";
-	public final static String KEYS_FILE = "keys.txt";
+	public final static String KEYS_FILE = "keys";
 	public final static String COMPUTERS_FILE = "machines.txt";
 	public final static String SLAVE_FILE = "slave.jar";
 	

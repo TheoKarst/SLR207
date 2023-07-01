@@ -85,7 +85,6 @@ public class ClientManager extends CommunicationManager {
 	// ...
 	public void receiveCommand() {
 		try {
-			
 			// Receive the arguments of the command to execute:
 			int nargs = inputStream.readInt();
 			String args[] = new String[nargs];
@@ -95,12 +94,6 @@ public class ClientManager extends CommunicationManager {
 				
 				inputStream.read(buffer);
 				args[i] = new String(buffer, StandardCharsets.UTF_8);
-				
-				for(byte b : buffer) {
-					System.out.print(b + " ");
-				}
-				System.out.println();
-				System.out.flush();
 			}
 			
 			// Execute the command:
