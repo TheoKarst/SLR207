@@ -1,44 +1,40 @@
 package master;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 
+import net.Client;
+import net.CommunicationManager;
 import util.Utils;
 
 public class Master {
 
 	public static void main(String[] args) {
-		
-		if(args.length != 1) {
-			System.err.println("usage: java Master [list_computer]");
+		if(args.length != 2) {
+			System.err.println("usage: java Master [keys_file] [computers_file] [splits_folder]");
 			System.exit(1);
 		}
 		
+		// Load the keys to setup the communication manager (this will allow us to cipher all the communications with a
+		// random symmetric key, shared with ssh to all trusted computers). All the exchanges between trusted computers will
+		// be using these keys and AES to have secured communications:
+		CommunicationManager.loadCipherKeys(args[0]);
+		
 		// List the names of the split files:
-		ArrayList<String> filenames = Utils.listFiles(Utils.SPLITS_FOLDER);
+		ArrayList<String> filenames = Utils.listFiles(args[2]);
 				
 		// List enough computers to perform our splits, among the computers listed in the given filename:
-		ArrayList<String> splitComputers = Utils.loadLines(args[0], filenames.size());
-		ArrayList<String> allComputers = Utils.loadLines(args[0]);
-		
+		ArrayList<String> splitComputers = Utils.loadLines(args[1], filenames.size());
+		ArrayList<String> allComputers = Utils.loadLines(args[1]);
 		
 		
 		// Split the files to the remote computers:
 		splitFiles(filenames, splitComputers);
 		
 		// Run the map and shuffle procedures on the remote computers:
-		try {
-			mapProcedure(filenames, splitComputers);			
-			sendComputerList(splitComputers, args[0]);
-			shuffleProcedure(filenames, splitComputers);
-			reduceProcedure(allComputers);
-		}
-		catch (InterruptedException | IOException e) {
-			e.printStackTrace();
-		}
+		mapProcedure(filenames, splitComputers);			
+		sendComputerList(splitComputers, args[1]);
+		shuffleProcedure(filenames, splitComputers);
+		reduceProcedure(allComputers);
 	}
 	
 	// Send the given files (the split files) to the given remote computers, in their splits folder.
@@ -54,29 +50,18 @@ public class Master {
 			threads[i] = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					try {
-						// Create a folder on the remote computer to store the splits files:
-						System.out.println("ssh " + host + " mkdir -p " + Utils.SPLITS_FOLDER);
-						ProcessBuilder pb = new ProcessBuilder("ssh", host, "mkdir", "-p", Utils.SPLITS_FOLDER);
-						
-						pb.redirectError(); pb.inheritIO();
-						Process process = pb.start();
-						
-						// Wait for the folder to be created:
-						process.waitFor();
-						
-						// Send the split file to the remote computer:
-						System.out.println("scp " + filename + " " + host + ":" + Utils.SPLITS_FOLDER);
-						pb = new ProcessBuilder("scp", filename, host + ":" + Utils.SPLITS_FOLDER);
-						pb.redirectError(); pb.inheritIO();
-						process = pb.start();
-						
-						// Wait for the copy to complete:
-						process.waitFor();
-					}
-					catch(IOException | InterruptedException e) {
-						e.printStackTrace();
-					}
+					Client client = new Client(host, Utils.PORT);
+					
+					// Create a folder on the remote computer to store the splits files:
+					System.out.println("ssh " + host + " mkdir -p " + Utils.SPLITS_FOLDER);
+					client.sendCommand("mkdir", "-p", Utils.SPLITS_FOLDER);
+					
+					// Send the split file to the remote computer:
+					System.out.println("scp " + filename + " " + host + ":" + Utils.SPLITS_FOLDER);
+					client.sendFile(filename, Utils.SPLITS_FOLDER);
+					
+					// Wait for the commands to complete:
+					client.verboseWaitFor();
 				}
 			});
 			
@@ -95,84 +80,142 @@ public class Master {
 	
 	// Asserting that computers.get(i) has the split file filenames.get(i), we run the mapping procedure on each computer
 	// with the corresponding file, using the slave.jar:
-	public static void mapProcedure(ArrayList<String> filenames, ArrayList<String> computers) throws InterruptedException, IOException {
+	public static void mapProcedure(ArrayList<String> filenames, ArrayList<String> computers) {
 		assert filenames.size() == computers.size();
 		
-		Process processes[] = new Process[filenames.size()];
+		Thread threads[] = new Thread[filenames.size()];
 		for(int i = 0; i < filenames.size(); i++) {
-			String host = Utils.getFullName(computers.get(i));
-			String splitFile = Utils.SPLITS_FOLDER + filenames.get(i);
+			final String host = Utils.getFullName(computers.get(i));
+			final String splitFile = Utils.SPLITS_FOLDER + filenames.get(i);
 			
-			System.out.println("ssh " + host + " java -jar " + Utils.SLAVE_FILE + " 0 " + splitFile);
-			ProcessBuilder pb = new ProcessBuilder("ssh", host, "java", "-jar", Utils.SLAVE_FILE, "0", splitFile);
+			threads[i] = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("ssh " + host + " java -jar " + Utils.SLAVE_FILE + " 0 " + splitFile);
+					
+					Client client = new Client(host, Utils.PORT);
+					client.sendMapReduceCommand(0, splitFile);
+					
+					// Wait for the client to complete:
+					client.verboseWaitFor();
+				}
+			});
 			
-			pb.redirectError(); pb.inheritIO();
-			processes[i] = pb.start();
+			threads[i].start();
 		}
 		
-		// Wait for all processes to complete:
-		for(Process process : processes)
-			process.waitFor();
+		// Wait for all threads to complete:
+		try {
+			for(Thread thread : threads)
+				thread.join();
+		}
+		catch(InterruptedException e) {
+			e.printStackTrace();
+		}
 		
 		System.out.println("MAP FINISHED\n");
 	}
 	
 	// Send the given file to all the computers listed, and save it as "machines.txt":
-	public static void sendComputerList(ArrayList<String> computers, String computersFile) throws InterruptedException, IOException {
+	public static void sendComputerList(ArrayList<String> computers, String computersFile) {
 
-		Process processes[] = new Process[computers.size()];
+		Thread threads[] = new Thread[computers.size()];
 		for(int i = 0; i < computers.size(); i++) {
-			String host = Utils.getFullName(computers.get(i));
+			final String host = Utils.getFullName(computers.get(i));
 			
-			System.out.println("scp " + computersFile + " " + host + ":" + Utils.COMPUTERS_FILE);
-			ProcessBuilder pb = new ProcessBuilder("scp", computersFile, host + ":" + Utils.COMPUTERS_FILE);
+			threads[i] = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("scp " + computersFile + " " + host + ":" + Utils.COMPUTERS_FILE);
+					
+					Client client = new Client(host, Utils.PORT);
+					client.sendFile(computersFile, Utils.COMPUTERS_FILE);
+					
+					// Wait for the client to complete:
+					client.verboseWaitFor();
+				}
+			});
 			
-			pb.redirectError(); pb.inheritIO();
-			processes[i] = pb.start();
+			threads[i].start();
 		}
 		
-		// Wait for all processes to complete:
-		for(Process process : processes)
-			process.waitFor();
+		// Wait for all threads to complete:
+		try {
+			for(Thread thread : threads)
+				thread.join();
+		}
+		catch(InterruptedException e) {
+			e.printStackTrace();
+		}		
 	}
 	
 	// Asserting that computers.get(i) has the split file filenames.get(i), we run the shuffle procedure on each computer
 	// with the corresponding file, using the slave.jar:
-	public static void shuffleProcedure(ArrayList<String> filenames, ArrayList<String> computers) throws InterruptedException, IOException {
+	public static void shuffleProcedure(ArrayList<String> filenames, ArrayList<String> computers) {
 		
-		Process processes[] = new Process[computers.size()];
+		Thread threads[] = new Thread[computers.size()];
 		for(int i = 0; i < computers.size(); i++) {
-			String host = Utils.getFullName(computers.get(i));
-			String mapFile = Utils.MAPS_FOLDER + Utils.splitNameToMapName(filenames.get(i));
+			final String host = Utils.getFullName(computers.get(i));
+			final String mapFile = Utils.MAPS_FOLDER + Utils.splitNameToMapName(filenames.get(i));
 			
-			System.out.println("ssh " + host + " java -jar " + Utils.SLAVE_FILE + " 1 " + mapFile);
-			ProcessBuilder pb = new ProcessBuilder("ssh", host, "java", "-jar", Utils.SLAVE_FILE, "1", mapFile);
+			threads[i] = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("ssh " + host + " java -jar " + Utils.SLAVE_FILE + " 1 " + mapFile);
+					
+					Client client = new Client(host, Utils.PORT);
+					client.sendMapReduceCommand(1, mapFile);
+
+					// Wait for the client to complete:
+					client.verboseWaitFor();
+				}
+			});
 			
-			pb.redirectError(); pb.inheritIO();
-			processes[i] = pb.start();	
+			threads[i].start();
 		}
 		
-		// Wait for all processes to complete:
-		for(Process process : processes)
-			process.waitFor();
+		// Wait for all threads to complete:
+		try {
+			for(Thread thread : threads)
+				thread.join();
+		}
+		catch(InterruptedException e) {
+			e.printStackTrace();
+		}
 		
 		System.out.println("SHUFFLE FINISHED\n");
 	}
 	
-	public static void reduceProcedure(ArrayList<String> computers) throws InterruptedException, IOException {
+	public static void reduceProcedure(ArrayList<String> computers) {
 		
-		Process processes[] = new Process[computers.size()];
+		Thread threads[] = new Thread[computers.size()];
 		for(int i = 0; i < computers.size(); i++) {
-			String host = Utils.getFullName(computers.get(i));
+			final String host = Utils.getFullName(computers.get(i));
 			
-			System.out.println("ssh " + host + " java -jar " + Utils.SLAVE_FILE + " 2");
-			ProcessBuilder pb = new ProcessBuilder("ssh", host, "java", "-jar", Utils.SLAVE_FILE, "2");
-			processes[i] = pb.start();
+			threads[i] = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("ssh " + host + " java -jar " + Utils.SLAVE_FILE + " 2");
+					
+					Client client = new Client(host, Utils.PORT);
+					client.sendMapReduceCommand(2, null);
+					
+					// Wait for the client to complete:
+					client.verboseWaitFor();
+				}
+			});
+			
+			threads[i].start();
 		}
 		
-		// Wait for all processes to complete:
-		for(Process process : processes)
-			process.waitFor();
+		// Wait for all threads to complete:
+		try {
+			for(Thread thread : threads)
+				thread.join();
+		}
+		catch(InterruptedException e) {
+			e.printStackTrace();
+		}
 		
 		System.out.println("REDUCE FINISHED\n");
 	}

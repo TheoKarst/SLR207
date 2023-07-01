@@ -10,9 +10,9 @@ public class TestClient {
 		
 		Client client = new Client("tp-1a226-25.enst.fr", 52301);
 		
-		client.sendFile("/home/theo/Documents/tmp/test/Client/smallfile", Utils.REMOTE_WD + "smallfile");
-		client.sendCommand("mkdir", Utils.REMOTE_WD + "test_directory");
-		client.sendCommand("bash", "-c", "echo hello_world > " + Utils.REMOTE_WD + "test_directory/testfile");
+		client.sendFile("/home/theo/Documents/tmp/test/Client/smallfile", "/tmp/karst-21/smallfile");
+		client.sendCommand("mkdir", "/tmp/karst-21/test_directory");
+		client.sendCommand("bash", "-c", "echo hello_world > " + "/tmp/karst-21/test_directory/testfile");
 		client.sendEOF();
 		
 		boolean success = client.verboseWaitFor();

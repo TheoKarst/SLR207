@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import net.Client;
 import net.CommunicationManager;
 import net.Server;
 import util.Utils;
@@ -22,10 +23,10 @@ public class Slave {
 		// Load the keys to setup the communication manager (this will allow us to cipher all the communications with a
 		// random symmetric key, shared with ssh to all trusted computers). All the exchanges between trusted computers will
 		// be using these keys and AES to have secured communications:
-		CommunicationManager.loadCipherKeys(Utils.REMOTE_WD + Utils.KEYS_FILE);
+		CommunicationManager.loadCipherKeys(Utils.KEYS_FILE);
 		
 		// Start the server on the given port, and execute commands that are received:
-		new Server(52301);
+		new Server(Utils.PORT);
 	}
 	
 	public static void createMapFromSplit(String fullpathSplit) {
@@ -94,36 +95,28 @@ public class Slave {
 			threads[i] = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					try {
-						Matcher matcher = pattern.matcher(shuffleFile);
-						
-						if(!matcher.matches()) {
-							System.err.println("Unexpected filename in the shuffles folder: " + shuffleFile);
-							return;
-						}
-						
-						int hash = Integer.parseInt(matcher.group(1));
-						
-						// The computer where to send the file:
-						String host = Utils.getFullName(computers.get(hash % computers.size()));
-						
-						// Create a folder on the remote computer to store the shuffled files:
-						ProcessBuilder pb = new ProcessBuilder("ssh", host, "mkdir", "-p", Utils.SHUFFLES_RECV_FOLDER);
-						Process process = pb.start();
-						
-						// Wait for the process to complete:
-						process.waitFor();
-						
-						// Send the file to the remote computer:
-						pb = new ProcessBuilder("scp", Utils.SHUFFLES_FOLDER + shuffleFile, host + ":" + Utils.SHUFFLES_RECV_FOLDER);
-						process = pb.start();
+					Matcher matcher = pattern.matcher(shuffleFile);
+					
+					if(!matcher.matches()) {
+						System.err.println("Unexpected filename in the shuffles folder: " + shuffleFile);
+						return;
+					}
+					
+					int hash = Integer.parseInt(matcher.group(1));
+					
+					// The computer where to send the file:
+					String host = Utils.getFullName(computers.get(hash % computers.size()));
+					
+					Client client = new Client(host, Utils.PORT);
+					
+					// Create a folder on the remote computer to store the shuffled files:
+					client.sendCommand("mkdir", "-p", Utils.SHUFFLES_RECV_FOLDER);
+					
+					// Send the file to the remote computer:
+					client.sendFile(Utils.SHUFFLES_FOLDER + shuffleFile, Utils.SHUFFLES_RECV_FOLDER);
 
-						// Wait for the process to complete:
-						process.waitFor();
-					}
-					catch(InterruptedException | IOException e) {
-						e.printStackTrace();
-					}
+					// Wait for the client to complete:
+					client.waitFor();
 				}
 			});
 			

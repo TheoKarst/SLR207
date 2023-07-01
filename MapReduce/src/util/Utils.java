@@ -17,19 +17,18 @@ public class Utils {
 	public final static String LOGIN = "karst-21";
 	public final static String DOMAIN = "enst.fr";
 	
-	// public final static String LOCAL_WD = System.getProperty("user.dir") + "/";
-	public final static String REMOTE_WD = "/tmp/" + LOGIN + "/";
+	public final static int PORT = 52301;
 	
-	private final static String LOG_FILE = "log.txt";
-	public final static String KEYS_FILE = "keys";
-	public final static String COMPUTERS_FILE = "machines.txt";
-	public final static String SLAVE_FILE = "slave.jar";
+	private final static String LOG_FILE = "/tmp/" + LOGIN + "/log.txt";
+	public final static String KEYS_FILE = "/tmp/" + LOGIN + "/keys";
+	public final static String COMPUTERS_FILE = "/tmp/" + LOGIN + "/machines.txt";
+	public final static String SLAVE_FILE = "/tmp/" + LOGIN + "/slave.jar";
 	
-	public final static String SPLITS_FOLDER = "splits/";
-	public final static String MAPS_FOLDER = "maps/";
-	public final static String SHUFFLES_FOLDER = "shuffles/";
-	public final static String SHUFFLES_RECV_FOLDER = "shufflesreceived/";
-	public final static String REDUCES_FOLDER = "reduces/";
+	public final static String SPLITS_FOLDER = "/tmp/" + LOGIN + "/splits/";
+	public final static String MAPS_FOLDER = "/tmp/" + LOGIN + "/maps/";
+	public final static String SHUFFLES_FOLDER = "/tmp/" + LOGIN + "/shuffles/";
+	public final static String SHUFFLES_RECV_FOLDER = "/tmp/" + LOGIN + "/shufflesreceived/";
+	public final static String REDUCES_FOLDER = "/tmp/" + LOGIN + "/reduces/";
 	
 	
 	public static String getFullName(String computer) {
