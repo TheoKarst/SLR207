@@ -6,7 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.lang.Comparable;
 
-public class WordCount {
+public class WordCounter {
 
     public static class Word implements Comparable<Word>{
         public final String word;
@@ -32,6 +32,12 @@ public class WordCount {
     }
 
     public static void main(String args[]){
+        if(args.length != 1){
+            System.out.println("This is a program written in Java to count occurences of words in a file");
+            System.out.println("usage: java WordCounter [filename]");
+            System.exit(1);
+        }
+        
         long startTime = System.currentTimeMillis();
         HashMap<String, Integer> wordsCount = countWords(args[0]);
         long endTime = System.currentTimeMillis();
