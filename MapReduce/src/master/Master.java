@@ -15,60 +15,63 @@ import util.Utils;
 public class Master {
 
 	public static void main(String[] args) {
-		if(args.length != 3 && args.length != 4) {
+		if(args.length != 3) {
 			System.err.println("usage:\tjava Master [keys_file] [computers_file] [splits_folder]");
-			System.err.println("or:\tjava Master [keys_file] [computers_file] [input_file] [n_splits]");
+			System.err.println("or:\tjava Master [keys_file] [computers_file] [input_file]");
 			System.exit(1);
 		}
 		
-		final String WORKING_DIR = System.getProperty("user.dir");	// Folder from which the master was started
-		
 		// Where the different files are stored on the local computer:
-		final String KEYS_FILE = args[0];
-		final String COMPUTERS_FILE = args[1];
-		final String SPLITS_FOLDER = args.length == 3 ? args[2] : WORKING_DIR + "/splits/";
-		
+		final String KEYS_FILE = Utils.getFullpath(args[0]);
+		final String COMPUTERS_FILE = Utils.getFullpath(args[1]);
 		
 		// Load the keys to setup the communication manager (this will allow us to cipher all the communications with a
 		// random symmetric key, shared with ssh to all trusted computers). All the exchanges between trusted computers will
 		// be using these keys and AES to have secured communications:
-		CommunicationManager.loadCipherKeys(args[0]);
+		CommunicationManager.loadCipherKeys(KEYS_FILE);
 		
-		if(args.length == 4) {
-			createSplits(SPLITS_FOLDER, args[2], Integer.parseInt(args[3]));
+		// Get the name of the computers on which we will run the algorithm:
+		ArrayList<String> computers = Utils.loadLines(COMPUTERS_FILE);
+		
+		final String SPLITS_FOLDER;
+		if(new File(args[2]).isFile()) {
+			SPLITS_FOLDER = Utils.WORKING_DIR + "splits/";
+			createSplits(SPLITS_FOLDER, args[2], computers.size());
 		}
-		
+		else {
+			SPLITS_FOLDER = Utils.getFullpath(args[2]);
+		}
+				
 		// List the full name (path + filename) of the split files:
 		ArrayList<String> filenames = Utils.listFiles(SPLITS_FOLDER, true);
-				
-		// List enough computers to perform our splits, among the computers listed in the given filename:
-		ArrayList<String> splitComputers = Utils.loadLines(COMPUTERS_FILE, filenames.size());
-		ArrayList<String> allComputers = Utils.loadLines(COMPUTERS_FILE);
+		
+		// Assert that the number of computers is equal to the number of splits:
+		assert computers.size() == filenames.size() : "The number of computers is not equal to the number of splits";
 		
 		
 		// Run all the steps of MapReduce algorithm, and measure the duration of each step:
 		
 		long t0 = System.currentTimeMillis();
 		
-		splitFiles(filenames, splitComputers);
+		splitFiles(filenames, computers);
 		long t1 = System.currentTimeMillis();
 		
-		mapProcedure(filenames, splitComputers);
+		mapProcedure(filenames, computers);
 		long t2 = System.currentTimeMillis();
 		
-		sendComputerList(splitComputers, COMPUTERS_FILE);
+		sendComputerList(computers, COMPUTERS_FILE);
 		long t3 = System.currentTimeMillis();
 		
-		shuffleProcedure(filenames, splitComputers);
+		shuffleProcedure(filenames, computers);
 		long t4 = System.currentTimeMillis();
 		
-		reduceProcedure(allComputers);
+		reduceProcedure(computers);
 		long t5 = System.currentTimeMillis();
 		
-		collectReducesProcedure(allComputers, WORKING_DIR + "/reduces/");
+		collectReducesProcedure(computers, Utils.WORKING_DIR + "reduces/");
 		long t6 = System.currentTimeMillis();
 		
-		System.out.println("Durations:");
+		System.out.println("\nDurations:");
 		System.out.println("SPLIT;MAP;SHUFFLE;REDUCE;COLLECT");
 		System.out.println((t1-t0) + ";" + (t2-t1) + ";" + (t4-t3) + ";" + (t5-t4) + ";" + (t6-t5));
 	}

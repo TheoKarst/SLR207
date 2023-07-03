@@ -7,7 +7,7 @@ remoteFolder="/tmp/$login/"
 if [ $# -ne 1 ]
 then
 	echo "This script cleans the remote computers, and close the servers"
-	echo "usage: ./clean.sh list_computers"
+	echo "usage: ./clean.sh [list_computers]"
 	exit
 fi
 

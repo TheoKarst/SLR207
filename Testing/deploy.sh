@@ -13,12 +13,16 @@ extension=${2#*.}
 if [ $# -ne 2 ] || [ $extension != "jar" ]
 then
 	echo "This script deploys and runs program.jar on all the computers listed in the given file"
-	echo "usage: ./deploy.sh list_computers program.jar"
+	echo "usage: ./deploy.sh [list_computers] [program.jar]"
 	exit
 fi
 
 # Generate a random secret key (symmetric key for AES) to have a secured connection between all the computers:
 openssl rand 32 > $keysfile
+
+# Close the ssh connections on the local computer:
+list_pid=$(ps w | grep "[j]ava -jar /tmp/karst-21" | grep -E -o "^ *[0-9]+")
+for pid in $list_pid; do kill -9 $pid; done
 
 computers=$(cat $1)
 

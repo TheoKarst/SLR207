@@ -6,7 +6,7 @@ domain="enst.fr"
 if [ $# -ne 2 ]
 then
 	echo "This script lists the name of [count_computers] that are up"
-	echo "usage: ./list_computers.sh from_computer count_computers"
+	echo "usage: ./list_computers.sh [from_computer] [count_computers]"
 	exit
 fi
 

@@ -19,6 +19,9 @@ public class Utils {
 	
 	public final static int PORT = 52301;
 	
+	// Path of the directory from which the current script was run:
+	public final static String WORKING_DIR = System.getProperty("user.dir") + "/";
+	
 	// Where all the different files are stored on the remote computers:
 	private final static String LOG_FILE = "/tmp/" + LOGIN + "/log.txt";
 	public final static String KEYS_FILE = "/tmp/" + LOGIN + "/keys";
@@ -112,10 +115,19 @@ public class Utils {
 		return fullpath.substring(fullpath.lastIndexOf(File.separator) + 1);
 	}
 	
+	// Return the fullpath of the file, assuming that it's located in the working directory:
+	public static String getFullpath(String filename) {
+		if(filename.charAt(0) == '/')
+			return filename;
+		
+		return WORKING_DIR + filename;
+	}
+	
+	
 	public static void printToLogFile(String data) {
 		try {
 			FileWriter writer = new FileWriter(LOG_FILE, true);
-			writer.write(data);
+			writer.write(data + "\n");
 			writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();

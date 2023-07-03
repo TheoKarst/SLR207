@@ -229,6 +229,8 @@ public class Slave {
 	
 	// Send back all the files from the reduces folder to the client:
 	public static void collectReduces(ClientManager manager, String clientFolder) {
+		Utils.printToLogFile("collectReduces(manager, " + clientFolder + ")");
+		
 		ArrayList<String> filenames = Utils.listFiles(Utils.REDUCES_FOLDER, true);
 		
 		for(String filename : filenames) {

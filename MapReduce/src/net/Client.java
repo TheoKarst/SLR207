@@ -90,7 +90,7 @@ public class Client extends CommunicationManager {
 	public String receiveMessage() {
 		try {
 			byte buffer[] = new byte[inputStream.readInt()];
-			inputStream.read(buffer);
+			inputStream.readFully(buffer);
 			
 			return new String(buffer, StandardCharsets.UTF_8);
 		}
@@ -205,5 +205,25 @@ public class Client extends CommunicationManager {
 		}
 		
 		return false;
+	}
+	
+	@Override
+	public void sendFile(String filepath, String remoteFilepath) {
+		try {
+			super.sendFile(filepath, remoteFilepath);
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	public void receiveFile() {
+		try {
+			super.receiveFile();
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

@@ -24,6 +24,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import util.Utils;
+
 public class CommunicationManager {
 	public final static int EOF_MESSAGE = 0;
 	public final static int ACK_MESSAGE = 1;
@@ -95,12 +97,12 @@ public class CommunicationManager {
 	}
 	
 	public final static void loadCipherKeys(String filename) {
-		try (FileInputStream inputStream = new FileInputStream(filename)) {
+		try (DataInputStream inputStream = new DataInputStream(new FileInputStream(filename))) {
 			byte[] key = new byte[16];
 			byte[] iv =  new byte[16];
 			
-			inputStream.read(key);
-			inputStream.read(iv);
+			inputStream.readFully(key);
+			inputStream.readFully(iv);
 			
 			CommunicationManager.secretKey = new SecretKeySpec(key, "AES");
 			CommunicationManager.iv = new IvParameterSpec(iv);
@@ -116,32 +118,31 @@ public class CommunicationManager {
 	// filepath:			byte[]
 	// fileSize:			long
 	// fileData:			byte[]
-	public void sendFile(String filepath, String remoteFilepath) {
+	public void sendFile(String filepath, String remoteFilepath) throws IOException {
 		File file = new File(filepath);
 	       
-	    try (FileInputStream fileInputStream = new FileInputStream(file)){
-	    	// Send command id:
-	    	outputStream.writeInt(SEND_FILE_COMMAND);
-	    	
-	    	// Send filepath:
-	    	outputStream.writeInt(remoteFilepath.length());
-	    	outputStream.write(remoteFilepath.getBytes());
-	    	outputStream.flush();
-	    	
-	    	// Send File size:
-	    	outputStream.writeLong(file.length());
-	    	
-	    	// Break file into chunks
-	        int bytes = 0;
-	        byte[] buffer = new byte[4*1024];
-	        while ((bytes=fileInputStream.read(buffer))!=-1){
-	        	outputStream.write(buffer,0,bytes);
-	            outputStream.flush();
-	        }
-	    }
-	    catch(IOException e) {
-	     	e.printStackTrace();
-	    }
+	    FileInputStream fileInputStream = new FileInputStream(file);
+    	
+	    // Send command id:
+    	outputStream.writeInt(SEND_FILE_COMMAND);
+    	
+    	// Send filepath:
+    	outputStream.writeInt(remoteFilepath.length());
+    	outputStream.write(remoteFilepath.getBytes());
+    	outputStream.flush();
+    	
+    	// Send File size:
+    	outputStream.writeLong(file.length());
+    	
+    	// Break file into chunks
+        int bytes = 0;
+        byte[] buffer = new byte[4*1024];
+        while ((bytes=fileInputStream.read(buffer))!=-1){
+        	outputStream.write(buffer,0,bytes);
+            outputStream.flush();
+        }
+        
+        fileInputStream.close();
 	}
 	
 	// Message format:
@@ -149,31 +150,26 @@ public class CommunicationManager {
 	// filepath:			byte[]
 	// fileSize:			long
 	// fileData:			byte[]
-	public void receiveFile() {
+	public void receiveFile() throws IOException {
 		
-		try {
-			// Read the filepath:
-			int filepathSize = inputStream.readInt();
-			byte[] buffer = new byte[filepathSize];
-			inputStream.read(buffer);
-			String filepath = new String(buffer, StandardCharsets.UTF_8);
-			
-	        FileOutputStream fileOutputStream = new FileOutputStream(filepath);
-	        
-	        // Read the file size:
-	        long size = inputStream.readLong();
-	        
-	        int bytes = 0;
-	        buffer = new byte[4*1024];
-	        while (size > 0 && (bytes = inputStream.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
-	            fileOutputStream.write(buffer,0,bytes);
-	            size -= bytes;      // read upto file size
-	        }
-	        
-	        fileOutputStream.close();
-		}
-		catch(IOException e) {
-			e.printStackTrace();
-		}
+		// Read the filepath:
+		int filepathSize = inputStream.readInt();
+		byte[] buffer = new byte[filepathSize];
+		inputStream.readFully(buffer);
+		String filepath = new String(buffer, StandardCharsets.UTF_8);
+		
+        FileOutputStream fileOutputStream = new FileOutputStream(filepath);
+        
+        // Read the file size:
+        long size = inputStream.readLong();
+        
+        int bytes = 0;
+        buffer = new byte[4*1024];
+        while (size > 0 && (bytes = inputStream.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
+            fileOutputStream.write(buffer,0,bytes);
+            size -= bytes;      // read upto file size
+        }
+        
+        fileOutputStream.close();
 	}
 }

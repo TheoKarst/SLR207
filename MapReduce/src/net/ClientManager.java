@@ -66,7 +66,7 @@ public class ClientManager extends CommunicationManager {
 			for(int i = 0; i < nargs; i++) {
 				byte buffer[] = new byte[inputStream.readInt()];
 				
-				inputStream.read(buffer);
+				inputStream.readFully(buffer);
 				args[i] = new String(buffer, StandardCharsets.UTF_8);
 			}
 			
@@ -90,7 +90,7 @@ public class ClientManager extends CommunicationManager {
 			
 			if(mode == 0 || mode == 1 || mode == 3) {
 				byte[] buffer = new byte[inputStream.readInt()];
-				inputStream.read(buffer);
+				inputStream.readFully(buffer);
 				String relatedString = new String(buffer, StandardCharsets.UTF_8);
 				
 				if(mode == 0) {
@@ -159,5 +159,25 @@ public class ClientManager extends CommunicationManager {
 		e.printStackTrace(writer);
 		
 		sendErrMessage(sw.toString());
+	}
+	
+	@Override
+	public void sendFile(String filepath, String remoteFilepath) {
+		try {
+			super.sendFile(filepath, remoteFilepath);
+		}
+		catch(IOException e) {
+			printStackTrace(e);
+		}
+	}
+	
+	@Override
+	public void receiveFile() {
+		try {
+			super.receiveFile();
+		}
+		catch(IOException e) {
+			printStackTrace(e);
+		}
 	}
 }
