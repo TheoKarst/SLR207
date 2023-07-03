@@ -26,7 +26,7 @@ for computer in $computers; do
 	host="$login@$computer.$domain"
 
     # Kill the previous versions of the slave servers, and create a new empty folder for our files:
-	command1=("ssh" "$host" "lsof -ti | xargs kill -9; rm -rf $remoteFolder; mkdir $remoteFolder")
+	command1=("ssh" "$host" "lsof -ti | xargs kill -9 2>/dev/null; rm -rf $remoteFolder; mkdir $remoteFolder")
 
     # Send the jar file to the remote host, and the keys file to allow him to decipher our messages:
 	command2=("scp" "$fullpath" "$host:$remoteFolder$filename")

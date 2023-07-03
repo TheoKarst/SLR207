@@ -51,39 +51,6 @@ public class ClientManager extends CommunicationManager {
 	}
 	
 	// Message format:
-	// filePathSize:		int
-	// filepath:			byte[]
-	// fileSize:			long
-	// fileData:			byte[]
-	public void receiveFile() {
-		
-		try {
-			// Read the filepath:
-			int filepathSize = inputStream.readInt();
-			byte[] buffer = new byte[filepathSize];
-			inputStream.read(buffer);
-			String filepath = new String(buffer, StandardCharsets.UTF_8);
-			
-	        FileOutputStream fileOutputStream = new FileOutputStream(filepath);
-	        
-	        // Read the file size:
-	        long size = inputStream.readLong();
-	        
-	        int bytes = 0;
-	        buffer = new byte[4*1024];
-	        while (size > 0 && (bytes = inputStream.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
-	            fileOutputStream.write(buffer,0,bytes);
-	            size -= bytes;      // read upto file size
-	        }
-	        
-	        fileOutputStream.close();
-		}
-		catch(IOException e) {
-			printStackTrace(e);
-		}
-	}
-	
-	// Message format:
 	// nargs:				int
 	// size_arg1:			int
 	// arg1:				byte[]
@@ -121,17 +88,20 @@ public class ClientManager extends CommunicationManager {
 		try {
 			int mode = inputStream.readInt();
 			
-			if(mode == 0 || mode == 1) {
+			if(mode == 0 || mode == 1 || mode == 3) {
 				byte[] buffer = new byte[inputStream.readInt()];
 				inputStream.read(buffer);
-				String relatedFile = new String(buffer, StandardCharsets.UTF_8);
+				String relatedString = new String(buffer, StandardCharsets.UTF_8);
 				
 				if(mode == 0) {
-					Slave.createMapFromSplit(relatedFile);
+					Slave.createMapFromSplit(relatedString);
 				}
 				else if(mode == 1) {
-					Slave.createShufflesFromMap(relatedFile);
+					Slave.createShufflesFromMap(relatedString);
 					Slave.sendShuffles(Utils.loadLines(Utils.COMPUTERS_FILE));
+				}
+				else if(mode == 3) {
+					Slave.collectReduces(this, relatedString);
 				}
 			}
 			else if(mode == 2) {

@@ -17,40 +17,6 @@ public class Client extends CommunicationManager {
 	
 	// Message format:
 	// commandId:			int
-	// filePathSize:		int
-	// filepath:			byte[]
-	// fileSize:			long
-	// fileData:			byte[]
-	public void sendFile(String filepath, String remoteFilepath) {
-		File file = new File(filepath);
-	       
-	    try (FileInputStream fileInputStream = new FileInputStream(file)){
-	    	// Send command id:
-	    	outputStream.writeInt(SEND_FILE_COMMAND);
-	    	
-	    	// Send filepath:
-	    	outputStream.writeInt(remoteFilepath.length());
-	    	outputStream.write(remoteFilepath.getBytes());
-	    	outputStream.flush();
-	    	
-	    	// Send File size:
-	    	outputStream.writeLong(file.length());
-	    	
-	    	// Break file into chunks
-	        int bytes = 0;
-	        byte[] buffer = new byte[4*1024];
-	        while ((bytes=fileInputStream.read(buffer))!=-1){
-	        	outputStream.write(buffer,0,bytes);
-	            outputStream.flush();
-	        }
-	    }
-	    catch(IOException e) {
-	     	e.printStackTrace();
-	    }
-	}
-	
-	// Message format:
-	// commandId:			int
 	// nargs:				int
 	// size_arg1:			int
 	// arg1:				byte[]
@@ -78,9 +44,18 @@ public class Client extends CommunicationManager {
 	// Message format:
 	// commandId:			int
 	// mode:				int
-	// file_size:			int (if any)
-	// file:				byte[] (if any)
-	public void sendMapReduceCommand(int mode, String relatedFile) {
+	// size_arg1:			int
+	// arg1:				byte[]
+	// size_arg2:			int
+	// arg2:				byte[]
+	// ...
+	
+	// List of availavle commands:
+	// 0: createMapFromSplit(splitFile)
+	// 1: createShuffleFromMap(mapFile)
+	// 2: reduceProcedure
+	// 3: collectReduces(masterAddr, masterFolder)
+	public void sendMapReduceCommand(int mode, String... args) {
 		try {
 			// Send command id:
 			outputStream.writeInt(SEND_MAP_REDUCE_COMMAND);
@@ -88,10 +63,10 @@ public class Client extends CommunicationManager {
 			// Send mode:
 			outputStream.writeInt(mode);
 			
-			// Send related file, if any:
-			if(relatedFile != null) {
-				outputStream.writeInt(relatedFile.length());
-				outputStream.write(relatedFile.getBytes());
+			// Send related strings, if any:			
+			for(String arg : args) {
+				outputStream.writeInt(arg.length());
+				outputStream.write(arg.getBytes());
 			}
 		}
 		catch (IOException e) {
@@ -154,6 +129,44 @@ public class Client extends CommunicationManager {
 		return false;
 	}
 	
+	public boolean waitForFiles() {
+		try {
+			while(true) {
+				int commandId = inputStream.readInt();
+				
+				switch(commandId) {
+					case SEND_OUT_MESSAGE:
+						System.out.println(receiveMessage());
+						break;
+					
+					case SEND_ERR_MESSAGE:
+						System.err.println(receiveMessage());
+						break;
+						
+					case SEND_FILE_COMMAND:
+						receiveFile();
+						break;
+						
+					case SEND_BASH_COMMAND:
+						System.err.println("[ERROR] Receiving a bash command from the server but it wasn't expected");
+						return false;
+						
+					case ACK_MESSAGE:
+						return true;
+						
+					default:
+						System.err.println("Unexpected message from the server");
+						return false;
+				}
+			}
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+		}
+		
+		return false;
+	}
+	
 	// Wait for an acknowledgement from the server and print the messages from the server.
 	// Return true if everything happened as expected:
 	public boolean verboseWaitFor() {
@@ -170,10 +183,19 @@ public class Client extends CommunicationManager {
 						System.err.println(receiveMessage());
 						break;
 						
+					case SEND_FILE_COMMAND:
+						System.err.println("[ERROR] Receiving a file from the server but it wasn't expected");
+						return false;
+						
+					case SEND_BASH_COMMAND:
+						System.err.println("[ERROR] Receiving a bash command from the server but it wasn't expected");
+						return false;
+						
 					case ACK_MESSAGE:
 						return true;
 						
 					default:
+						System.err.println("Unexpected message from the server");
 						return false;
 				}
 			}

@@ -109,4 +109,71 @@ public class CommunicationManager {
 			e.printStackTrace();
 		}
 	}
+	
+	// Message format:
+	// commandId:			int
+	// filePathSize:		int
+	// filepath:			byte[]
+	// fileSize:			long
+	// fileData:			byte[]
+	public void sendFile(String filepath, String remoteFilepath) {
+		File file = new File(filepath);
+	       
+	    try (FileInputStream fileInputStream = new FileInputStream(file)){
+	    	// Send command id:
+	    	outputStream.writeInt(SEND_FILE_COMMAND);
+	    	
+	    	// Send filepath:
+	    	outputStream.writeInt(remoteFilepath.length());
+	    	outputStream.write(remoteFilepath.getBytes());
+	    	outputStream.flush();
+	    	
+	    	// Send File size:
+	    	outputStream.writeLong(file.length());
+	    	
+	    	// Break file into chunks
+	        int bytes = 0;
+	        byte[] buffer = new byte[4*1024];
+	        while ((bytes=fileInputStream.read(buffer))!=-1){
+	        	outputStream.write(buffer,0,bytes);
+	            outputStream.flush();
+	        }
+	    }
+	    catch(IOException e) {
+	     	e.printStackTrace();
+	    }
+	}
+	
+	// Message format:
+	// filePathSize:		int
+	// filepath:			byte[]
+	// fileSize:			long
+	// fileData:			byte[]
+	public void receiveFile() {
+		
+		try {
+			// Read the filepath:
+			int filepathSize = inputStream.readInt();
+			byte[] buffer = new byte[filepathSize];
+			inputStream.read(buffer);
+			String filepath = new String(buffer, StandardCharsets.UTF_8);
+			
+	        FileOutputStream fileOutputStream = new FileOutputStream(filepath);
+	        
+	        // Read the file size:
+	        long size = inputStream.readLong();
+	        
+	        int bytes = 0;
+	        buffer = new byte[4*1024];
+	        while (size > 0 && (bytes = inputStream.read(buffer, 0, (int)Math.min(buffer.length, size))) != -1) {
+	            fileOutputStream.write(buffer,0,bytes);
+	            size -= bytes;      // read upto file size
+	        }
+	        
+	        fileOutputStream.close();
+		}
+		catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
 }

@@ -19,6 +19,7 @@ public class Utils {
 	
 	public final static int PORT = 52301;
 	
+	// Where all the different files are stored on the remote computers:
 	private final static String LOG_FILE = "/tmp/" + LOGIN + "/log.txt";
 	public final static String KEYS_FILE = "/tmp/" + LOGIN + "/keys";
 	public final static String COMPUTERS_FILE = "/tmp/" + LOGIN + "/machines.txt";

@@ -11,6 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import net.Client;
+import net.ClientManager;
 import net.CommunicationManager;
 import net.Server;
 import util.Utils;
@@ -223,6 +224,15 @@ public class Slave {
 			} catch (IOException e) {
 				Utils.printToLogFile(e);
 			}
+		}
+	}
+	
+	// Send back all the files from the reduces folder to the client:
+	public static void collectReduces(ClientManager manager, String clientFolder) {
+		ArrayList<String> filenames = Utils.listFiles(Utils.REDUCES_FOLDER, true);
+		
+		for(String filename : filenames) {
+			manager.sendFile(filename, clientFolder + Utils.getBasename(filename));
 		}
 	}
 }
